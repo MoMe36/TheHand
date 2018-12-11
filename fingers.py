@@ -168,8 +168,22 @@ def draw(hand, quadratic):
 
 def draw_text(screen, font): 
 
-	label = font.render('Saluuuuut', 1, (255,255,255))
-	screen.blit(label, (120,120))
+	text = "Random value: {}".format(np.random.uniform(0.,1.))
+	position = (0,15,2)
+	textSurface = font.render(text, True, (255,255,255,255), (0,0,0,255))     
+	textData = pygame.image.tostring(textSurface, "RGBA", True)     
+	glRasterPos3d(*position)     
+	glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
+
+
+	# Method called several times because \n is not supported 
+
+	text = "Random value: {}".format(np.random.uniform(0.,1.))
+	position = (0,14,2)
+	textSurface = font.render(text, True, (255,255,255,255), (0,0,0,255))     
+	textData = pygame.image.tostring(textSurface, "RGBA", True)     
+	glRasterPos3d(*position)     
+	glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
 
 
 def main():
@@ -190,7 +204,7 @@ def main():
 	glRotatef(45,1.,0,0.)
 
 	incs = [0.7, -0.8, 0.5]
-
+	counter = 0 
 	while True:
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
@@ -203,7 +217,12 @@ def main():
 		draw(hand, quadratic)
 		hand.move(incs)
 
-		# draw_text(screen, font)
+		counter += 1 
+		if counter > 80: 
+			incs = np.random.uniform(-1.,1., (3,3))
+			counter = 0
+
+		draw_text(screen, font)
 
 		pygame.display.flip()
 		pygame.time.wait(10)
