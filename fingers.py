@@ -6,17 +6,27 @@ from OpenGL.GLU import *
 
 
 
-def get_articulation(p0,p1, width = 1.):
+def get_articulation(p0,p1, angle, width = 1.):
 
 	# print(p0)
 	# print(p1)
 
 
 	points = []
+
+	# ====== Shows the points order ========
+	# decals = np.array([[0.,0., 1.],
+	# 				   [0.,1., 1.],
+	# 				   [0,1., 0.]
+	# 				   ])
+
+
+	# ====== Real distance based on angles =====
 	decals = np.array([[0.,0., 1.],
-					   [0.,1., 1.],
-					   [0,1., 0.]
+					   [-np.sin(angle),np.cos(angle), 1.],
+					   [-np.sin(angle), np.cos(angle), 0.]
 					   ])
+
 
 	for i, p in enumerate([p0,p1]): 
 		points.append(p)
@@ -68,7 +78,7 @@ class Finger:
 		cubes = []
 		edges = []
 		for i in range(joints.shape[0] -1):
-			articulation, art_edges = get_articulation(joints[i], joints[i+1]) 
+			articulation, art_edges = get_articulation(joints[i], joints[i+1], self.angles[i]) 
 
 			cubes.append(articulation)
 			edges.append(art_edges)
@@ -137,12 +147,19 @@ def draw(hand, quadratic):
 	gluSphere(quadratic,0.5,32,32)		
 	glPopMatrix()
 
+def draw_text(screen, font): 
+
+	label = font.render('Saluuuuut', 1, (255,255,255))
+	screen.blit(label, (120,120))
 
 
 def main():
 	pygame.init()
 	display = (800,600)
-	pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
+	screen = pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
+
+	font = pygame.font.SysFont('monospace', 15)
+
 
 	hand = Hand(3,3,3.)
 	
@@ -150,10 +167,10 @@ def main():
 	gluQuadricNormals(quadratic, GLU_SMOOTH)		# Create Smooth Normals (NEW)
 	gluQuadricTexture(quadratic, GL_TRUE)
 	gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
-	glTranslatef(0.0,-2, -20)
+	glTranslatef(-7.0,-5, -30)
 	glRotatef(45,1.,0,0.)
 
-	incs = [0.1, -0.2, 0.1]
+	incs = [0.7, -0.8, 0.5]
 
 	while True:
 		for event in pygame.event.get():
@@ -161,10 +178,14 @@ def main():
 				pygame.quit()
 				quit()
 
-		glRotatef(0.2, 0, 1, 0)
+		# glRotatef(0.2, 0, 1, 0)
+		# glTranslatef(0.1,0,0)
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 		draw(hand, quadratic)
 		hand.move(incs)
+
+		# draw_text(screen, font)
+
 		pygame.display.flip()
 		pygame.time.wait(10)
 
