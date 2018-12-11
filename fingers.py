@@ -80,7 +80,12 @@ class Finger:
 		self.angles += action*0.01
 		self.angles = np.clip(self.angles, 0., np.pi/2.)
 	
+class Target: 
 
+	def __init__(self, pos):
+
+		self.pos = pos 
+	
 class Hand: 
 
 	def __init__(self, nb_fingers, nb_joints, joints_length): 
@@ -103,10 +108,10 @@ class Hand:
 			f.move(a)
 		
 colors = ((1.,0.,0.), 
-		  (0.,1.,0.), 
-		  (0.,0.,1.))
+	  (0.,1.,0.), 
+	  (0.,0.,1.))
 
-def draw(hand): 
+def draw(hand, quadratic): 
 
 	glBegin(GL_LINES)
 
@@ -125,9 +130,12 @@ def draw(hand):
 		
 			color += 1
 
-
 	glEnd()
-
+	glPushMatrix()
+	# glLoadIdentity()
+	glTranslatef(1,1,1)
+	gluSphere(quadratic,0.5,32,32)		
+	glPopMatrix()
 
 
 
@@ -138,7 +146,9 @@ def main():
 
 	hand = Hand(3,3,3.)
 	
-
+	quadratic = gluNewQuadric()
+	gluQuadricNormals(quadratic, GLU_SMOOTH)		# Create Smooth Normals (NEW)
+	gluQuadricTexture(quadratic, GL_TRUE)
 	gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
 	glTranslatef(0.0,-2, -20)
 	glRotatef(45,1.,0,0.)
@@ -153,7 +163,7 @@ def main():
 
 		glRotatef(0.2, 0, 1, 0)
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-		draw(hand)
+		draw(hand, quadratic)
 		hand.move(incs)
 		pygame.display.flip()
 		pygame.time.wait(10)
