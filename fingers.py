@@ -47,8 +47,14 @@ def get_articulation(p0,p1, angle, width = 1.):
 			 (7,3),
 			 (7,4))
 	
+	surfaces = ((0,1,2,3),
+				(3,2,6,7),
+				(2,1,5,6),
+				(4,5,6,7),
+				(0,4,7,3),
+				(0,1,5,4) )
 
-	return points, edges
+	return points, edges, surfaces
 
 
 class Finger:
@@ -77,13 +83,15 @@ class Finger:
 
 		cubes = []
 		edges = []
+		surfaces = []
 		for i in range(joints.shape[0] -1):
-			articulation, art_edges = get_articulation(joints[i], joints[i+1], self.angles[i]) 
+			articulation, art_edges, surf = get_articulation(joints[i], joints[i+1], self.angles[i]) 
 
 			cubes.append(articulation)
 			edges.append(art_edges)
+			surfaces.append(surf)
 
-		return cubes, edges
+		return cubes, edges, surfaces
 
 	def move(self, action): 
 
@@ -123,17 +131,25 @@ colors = ((1.,0.,0.),
 
 def draw(hand, quadratic): 
 
-	glBegin(GL_LINES)
-
 	data = hand.compute_draw_infos()
+	glColor3fv((1,1,1)) 
+	glBegin(GL_QUADS)
+	for finger_data in data:
+		cube, cube_edges, all_surfaces = finger_data
+		for surfaces, c in zip(all_surfaces, cube):
+			for surface in surfaces: 
+				for vertex in surface: 
+					# input(vertex)
+					glVertex3fv(c[vertex])
+	glEnd()
 
+	glColor3fv((0,0,0)) 
+	glBegin(GL_LINES)
 	for finger_data in data: 
-		cube, cube_edges = finger_data
+		cube, cube_edges, surfaces = finger_data
 		color = 0
 		for c, ce in zip(cube, cube_edges):
-			glColor3fv(colors[color]) 
-
-			
+			# glColor3fv(colors[color]) 
 			for edge in ce: 
 				for v in edge: 
 					glVertex3fv(c[v])
@@ -141,6 +157,9 @@ def draw(hand, quadratic):
 			color += 1
 
 	glEnd()
+
+
+	glColor3fv((1.,0.5,0.1))
 	glPushMatrix()
 	# glLoadIdentity()
 	glTranslatef(1,1,1)
