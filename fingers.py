@@ -6,7 +6,7 @@ from OpenGL.GLU import *
 
 
 
-def get_articulation(p0,p1, angle, width = 1.):
+def get_articulation(p0,p1, angle, scale, width = 1.):
 
 	# print(p0)
 	# print(p1)
@@ -27,11 +27,10 @@ def get_articulation(p0,p1, angle, width = 1.):
 					   [-np.sin(angle), np.cos(angle), 0.]
 					   ])
 
-
 	for i, p in enumerate([p0,p1]): 
 		points.append(p)
 		for j in range(decals.shape[0]): 
-			moved_point = p + decals[j]*width
+			moved_point = p + decals[j]*width*scale
 			points.append(moved_point.tolist())
 
 	edges = ((0,1),
@@ -59,15 +58,15 @@ def get_articulation(p0,p1, angle, width = 1.):
 
 class Finger:
 
-	def __init__(self, pos, nb_joints, length): 
+	def __init__(self, pos, nb_joints, length, width): 
 		
 		self.pos = pos 
 		self.nb_joints = nb_joints
 		self.length = length
-
+		self.width = width 
 		self.angles = np.random.uniform(0.,np.pi*0.5, (self.nb_joints))*0.5
 	
-	def get_joints_positions(self): 
+	def get_joints_positions(self, scale): 
 	
 		base_pos = self.pos[:2]
 
@@ -79,13 +78,13 @@ class Finger:
 		z_pos = np.ones((joints.shape[0], 1))*self.pos[-1]
 
 
-		joints = np.hstack([joints, z_pos])
+		joints = np.hstack([joints, z_pos])*scale
 
 		cubes = []
 		edges = []
 		surfaces = []
 		for i in range(joints.shape[0] -1):
-			articulation, art_edges, surf = get_articulation(joints[i], joints[i+1], self.angles[i]) 
+			articulation, art_edges, surf = get_articulation(joints[i], joints[i+1], self.angles[i], scale, self.width) 
 
 			cubes.append(articulation)
 			edges.append(art_edges)
@@ -106,17 +105,18 @@ class Target:
 	
 class Hand: 
 
-	def __init__(self, nb_fingers, nb_joints, joints_length): 
+	def __init__(self, nb_fingers, nb_joints, joints_length, width): 
 		
 		self.nb_fingers = nb_fingers
 		self.nb_joints =nb_joints
 		self.joints_length = joints_length
 
-		self.fingers = [Finger(np.array([0.0,0.5,2.*_]), self.nb_joints, self.joints_length) for _ in range(self.nb_fingers)]
+		self.fingers = [Finger(np.array([0.0,0.0,f*1.5*width]), self.nb_joints, self.joints_length, width) for f in range(self.nb_fingers)]
 
-	def compute_draw_infos(self): 
+	def compute_draw_infos(self, scale): 
 
-		fingers = [f.get_joints_positions() for f in self.fingers]
+
+		fingers = [f.get_joints_positions(scale) for f in self.fingers]
 
 		return fingers
 
@@ -125,14 +125,28 @@ class Hand:
 		for f,a in zip(self.fingers, action): 
 			f.move(a)
 		
+class World: 
+
+	def __init__(self, nb_fingers = 3, nb_joints = 3, joints_length = 0.2, scale = 15., width = 0.05): 
+		
+		self.hand = Hand(nb_fingers, nb_joints, joints_length, width)
+		self.scale = scale 
+		
+
+
 colors = ((1.,0.,0.), 
 	  (0.,1.,0.), 
 	  (0.,0.,1.))
 
-def draw(hand, quadratic): 
+def draw(world, quadratic): 
 
-	data = hand.compute_draw_infos()
-	glColor3fv((1,1,1)) 
+	
+
+
+	hand = world.hand
+	scale = world.scale 
+	data = hand.compute_draw_infos(scale)
+	glColor3fv((0.3,0.75,0.5)) 
 	glBegin(GL_QUADS)
 	for finger_data in data:
 		cube, cube_edges, all_surfaces = finger_data
@@ -159,12 +173,22 @@ def draw(hand, quadratic):
 	glEnd()
 
 
-	glColor3fv((1.,0.5,0.1))
+	glColor3fv((0.8,0.6,0.3))
 	glPushMatrix()
 	# glLoadIdentity()
 	glTranslatef(1,1,1)
-	gluSphere(quadratic,0.5,32,32)		
+	gluQuadricDrawStyle(quadratic, GLU_FILL);
+	gluSphere(quadratic,0.65,16,16)		
+	glColor3fv((1,1,1))
+	gluQuadricDrawStyle(quadratic, GLU_LINE);
+	gluSphere(quadratic,0.7,8,6)
 	glPopMatrix()
+
+
+
+	# input()
+
+
 
 def draw_text(screen, font): 
 
@@ -194,14 +218,34 @@ def main():
 	font = pygame.font.SysFont('monospace', 15)
 
 
-	hand = Hand(3,3,3.)
-	
+	world = World()
+	#hand = Hand(3,3,3.)
+
+	glEnable(GL_DEPTH_TEST)
+	glEnable(GL_LIGHTING)
+
+	light_direction = [0.8, 0.8, 1.0, 1.0]
+	light_intensity = [0.9, 0.9, 0.9, 1.0]
+	ambient_intensity = [0.8, 0.8, 0.8, 1.0]
+
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT,  ambient_intensity)
+	glEnable(GL_LIGHT0)
+
+	glLightfv(GL_LIGHT0, GL_POSITION, light_direction)
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_intensity)
+
+	glEnable(GL_COLOR_MATERIAL)
+	glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE)
+
+
 	quadratic = gluNewQuadric()
 	gluQuadricNormals(quadratic, GLU_SMOOTH)		# Create Smooth Normals (NEW)
 	gluQuadricTexture(quadratic, GL_TRUE)
 	gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
 	glTranslatef(-7.0,-5, -30)
 	glRotatef(45,1.,0,0.)
+
+
 
 	incs = [0.7, -0.8, 0.5]
 	counter = 0 
@@ -214,9 +258,10 @@ def main():
 		# glRotatef(0.2, 0, 1, 0)
 		# glTranslatef(0.1,0,0)
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-		draw(hand, quadratic)
-		hand.move(incs)
+		# glShadeModel(GL_FLAT)
 
+		draw(world, quadratic)
+		world.hand.move(incs)
 		counter += 1 
 		if counter > 80: 
 			incs = np.random.uniform(-1.,1., (3,3))
@@ -226,6 +271,7 @@ def main():
 
 		pygame.display.flip()
 		pygame.time.wait(10)
+
 
 
 main()
