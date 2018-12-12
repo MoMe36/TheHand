@@ -169,6 +169,8 @@ class World:
 		self.quadratic = gluNewQuadric()
 		gluQuadricNormals(self.quadratic, GLU_SMOOTH)		# Create Smooth Normals (NEW)
 		gluQuadricTexture(self.quadratic, GL_TRUE)
+
+
 		gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
 		glTranslatef(-7.0,-5, -30)
 		glRotatef(45,1.,0,0.)
@@ -234,19 +236,37 @@ class World:
 		glEnd()
 
 		self.draw_targets()
-		# glColor3fv((0.8,0.6,0.3))
-		# glPushMatrix()
-		# # glLoadIdentity()
-		# glTranslatef(1,1,1)
-		# gluQuadricDrawStyle(self.quadratic, GLU_FILL);
-		# gluSphere(self.quadratic,0.65,16,16)		
-		# glColor3fv((1,1,1))
-		# gluQuadricDrawStyle(self.quadratic, GLU_LINE);
-		# gluSphere(self.quadratic,0.7,8,6)
-		# glPopMatrix()
+		self.move_camera()
+		
 
+	def move_camera(self): 
 
+		translation = np.zeros((3))
+		keys = pygame.key.get_pressed()
 
+		if keys[273] == 1: 
+			translation[2] += 1
+		if keys[274] == 1:
+			translation[2] -= 1
+		if keys[275] == 1: 
+			translation[0] -= 1
+		if keys[276] == 1: 
+			translation[0] += 1
+		if keys[117] == 1: 
+			translation[1] -= 1
+		if keys[106] == 1: 
+			translation[1] += 1	
+
+		translation *= 0.2
+		glTranslatef(*translation)
+
+		rotation = np.zeros_like(translation)
+		if keys[113] == 1: 
+			rotation[1] += 1
+		if keys[100] == 1: 
+			rotation[1] -= 1
+
+		glRotatef(1,*rotation)
 
 
 # colors = ((1.,0.,0.), 
@@ -323,42 +343,9 @@ def draw_text(screen, font):
 
 
 def main():
-	# pygame.init()
-	# display = (800,600)
-	# screen = pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
-
-	# font = pygame.font.SysFont('monospace', 15)
-
-
+	
 	world = World()
-	#hand = Hand(3,3,3.)
-
-	# glEnable(GL_DEPTH_TEST)
-	# glEnable(GL_LIGHTING)
-
-	# light_direction = [0.8, 0.8, 1.0, 1.0]
-	# light_intensity = [0.9, 0.9, 0.9, 1.0]
-	# ambient_intensity = [0.8, 0.8, 0.8, 1.0]
-
-	# glLightModelfv(GL_LIGHT_MODEL_AMBIENT,  ambient_intensity)
-	# glEnable(GL_LIGHT0)
-
-	# glLightfv(GL_LIGHT0, GL_POSITION, light_direction)
-	# glLightfv(GL_LIGHT0, GL_DIFFUSE, light_intensity)
-
-	# glEnable(GL_COLOR_MATERIAL)
-	# glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE)
-
-
-	# quadratic = gluNewQuadric()
-	# gluQuadricNormals(quadratic, GLU_SMOOTH)		# Create Smooth Normals (NEW)
-	# gluQuadricTexture(quadratic, GL_TRUE)
-	# gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
-	# glTranslatef(-7.0,-5, -30)
-	# glRotatef(45,1.,0,0.)
-
-
-
+	
 	incs = [0.7, -0.8, 0.5]
 	counter = 0 
 	while True:
