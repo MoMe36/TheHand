@@ -5,7 +5,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 
 
-
+np.set_printoptions(formatter={'float':'{:0.2f}'.format})
 def get_articulation(p0,p1, angle, scale, width = 1.):
 
 	# print(p0)
@@ -92,6 +92,23 @@ class Finger:
 
 		return cubes, edges, surfaces
 
+	def get_effector_pos(self): 
+
+		base_pos = self.pos[:2]
+
+		joints = np.hstack([np.cos(self.angles).reshape(-1,1), np.sin(self.angles).reshape(-1,1)])
+		joints *= self.length
+		joints = np.vstack([base_pos, joints])
+		joints = np.cumsum(joints, 0)
+		
+		z_pos = np.ones((joints.shape[0], 1))*self.pos[-1]
+
+
+		joints = np.hstack([joints, z_pos])
+
+
+		return joints[-1]
+
 	def move(self, action): 
 
 		self.angles += action*0.01
@@ -147,7 +164,8 @@ class World:
 
 		pygame.init()
 		display = (800,600)
-		screen = pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
+		self.screen = pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
+		self.font = pygame.font.SysFont('monospace', 15)
 
 		glEnable(GL_DEPTH_TEST)
 		glEnable(GL_LIGHTING)
@@ -237,10 +255,27 @@ class World:
 
 		self.draw_targets()
 		self.move_camera()
-		
+		self.draw_text(	)
+
+	def draw_text(self): 
+
+		for i,(f,t) in enumerate(zip(self.hand.fingers, self.targets)): 
+			text = self.get_fingers_target_infos(f,t,i)
+			position = (0,15+i*0.5,2)
+			textSurface = self.font.render(text, True, (255,255,255,255), (0,0,0,255))     
+			textData = pygame.image.tostring(textSurface, "RGBA", True)     
+			glRasterPos3d(*position)     
+			glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
+
+	def get_fingers_target_infos(self, finger, target, num): 
+
+		text = "Random value: {}".format(np.random.uniform(0.,1.))
+		text = "ID: {} Effector pos: {} Target pos {}".format(num, finger.get_effector_pos(), target)
+		return text
 
 	def move_camera(self): 
 
+		glPushMatrix()
 		translation = np.zeros((3))
 		keys = pygame.key.get_pressed()
 
@@ -258,6 +293,7 @@ class World:
 			translation[1] += 1	
 
 		translation *= 0.2
+
 		glTranslatef(*translation)
 
 		rotation = np.zeros_like(translation)
@@ -267,54 +303,52 @@ class World:
 			rotation[1] -= 1
 
 		glRotatef(1,*rotation)
+		# glRotatef(1, 0.,1.,0.)
 
+		glPopMatrix()
 
-# colors = ((1.,0.,0.), 
-# 		  (0.,1.,0.), 
-# 		  (0.,0.,1.))
+# def draw(world, quadratic): 
 
-def draw(world, quadratic): 
+# 	hand = world.hand
+# 	scale = world.scale 
+# 	data = hand.compute_draw_infos(scale)
+# 	glColor3fv((0.3,0.75,0.5)) 
+# 	glBegin(GL_QUADS)
+# 	for finger_data in data:
+# 		cube, cube_edges, all_surfaces = finger_data
+# 		for surfaces, c in zip(all_surfaces, cube):
+# 			for surface in surfaces: 
+# 				for vertex in surface: 
+# 					# input(vertex)
+# 					glVertex3fv(c[vertex])
+# 	glEnd()
 
-	hand = world.hand
-	scale = world.scale 
-	data = hand.compute_draw_infos(scale)
-	glColor3fv((0.3,0.75,0.5)) 
-	glBegin(GL_QUADS)
-	for finger_data in data:
-		cube, cube_edges, all_surfaces = finger_data
-		for surfaces, c in zip(all_surfaces, cube):
-			for surface in surfaces: 
-				for vertex in surface: 
-					# input(vertex)
-					glVertex3fv(c[vertex])
-	glEnd()
-
-	glColor3fv((0,0,0)) 
-	glBegin(GL_LINES)
-	for finger_data in data: 
-		cube, cube_edges, surfaces = finger_data
-		color = 0
-		for c, ce in zip(cube, cube_edges):
-			# glColor3fv(colors[color]) 
-			for edge in ce: 
-				for v in edge: 
-					glVertex3fv(c[v])
+# 	glColor3fv((0,0,0)) 
+# 	glBegin(GL_LINES)
+# 	for finger_data in data: 
+# 		cube, cube_edges, surfaces = finger_data
+# 		color = 0
+# 		for c, ce in zip(cube, cube_edges):
+# 			# glColor3fv(colors[color]) 
+# 			for edge in ce: 
+# 				for v in edge: 
+# 					glVertex3fv(c[v])
 		
-			color += 1
+# 			color += 1
 
-	glEnd()
+# 	glEnd()
 
 
-	glColor3fv((0.8,0.6,0.3))
-	glPushMatrix()
-	# glLoadIdentity()
-	glTranslatef(1,1,1)
-	gluQuadricDrawStyle(quadratic, GLU_FILL);
-	gluSphere(quadratic,0.65,16,16)		
-	glColor3fv((1,1,1))
-	gluQuadricDrawStyle(quadratic, GLU_LINE);
-	gluSphere(quadratic,0.7,8,6)
-	glPopMatrix()
+# 	glColor3fv((0.8,0.6,0.3))
+# 	glPushMatrix()
+# 	# glLoadIdentity()
+# 	glTranslatef(1,1,1)
+# 	gluQuadricDrawStyle(quadratic, GLU_FILL);
+# 	gluSphere(quadratic,0.65,16,16)		
+# 	glColor3fv((1,1,1))
+# 	gluQuadricDrawStyle(quadratic, GLU_LINE);
+# 	gluSphere(quadratic,0.7,8,6)
+# 	glPopMatrix()
 
 
 
@@ -322,24 +356,24 @@ def draw(world, quadratic):
 
 
 
-def draw_text(screen, font): 
+# def draw_text(screen, font): 
 
-	text = "Random value: {}".format(np.random.uniform(0.,1.))
-	position = (0,15,2)
-	textSurface = font.render(text, True, (255,255,255,255), (0,0,0,255))     
-	textData = pygame.image.tostring(textSurface, "RGBA", True)     
-	glRasterPos3d(*position)     
-	glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
+# 	text = "Random value: {}".format(np.random.uniform(0.,1.))
+# 	position = (0,15,2)
+# 	textSurface = font.render(text, True, (255,255,255,255), (0,0,0,255))     
+# 	textData = pygame.image.tostring(textSurface, "RGBA", True)     
+# 	glRasterPos3d(*position)     
+# 	glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
 
 
-	# Method called several times because \n is not supported 
+# 	# Method called several times because \n is not supported 
 
-	text = "Random value: {}".format(np.random.uniform(0.,1.))
-	position = (0,14,2)
-	textSurface = font.render(text, True, (255,255,255,255), (0,0,0,255))     
-	textData = pygame.image.tostring(textSurface, "RGBA", True)     
-	glRasterPos3d(*position)     
-	glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
+# 	text = "Random value: {}".format(np.random.uniform(0.,1.))
+# 	position = (0,14,2)
+# 	textSurface = font.render(text, True, (255,255,255,255), (0,0,0,255))     
+# 	textData = pygame.image.tostring(textSurface, "RGBA", True)     
+# 	glRasterPos3d(*position)     
+# 	glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
 
 
 def main():
