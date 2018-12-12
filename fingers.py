@@ -66,7 +66,7 @@ class Finger:
 		self.width = width 
 		self.angles = np.random.uniform(0.,np.pi*0.5, (self.nb_joints))*0.5
 	
-	def get_joints_positions(self, scale): 
+	def get_joints_draw_positions(self, scale): 
 	
 		base_pos = self.pos[:2]
 
@@ -92,7 +92,7 @@ class Finger:
 
 		return cubes, edges, surfaces
 
-	def get_effector_pos(self): 
+	def get_joints_pos(self): 
 
 		base_pos = self.pos[:2]
 
@@ -106,8 +106,7 @@ class Finger:
 
 		joints = np.hstack([joints, z_pos])
 
-
-		return joints[-1]
+		return joints
 
 	def move(self, action): 
 
@@ -133,8 +132,7 @@ class Hand:
 
 	def compute_draw_infos(self, scale): 
 
-
-		fingers = [f.get_joints_positions(scale) for f in self.fingers]
+		fingers = [f.get_joints_draw_positions(scale) for f in self.fingers]
 
 		return fingers
 
@@ -172,21 +170,42 @@ class World:
 		self.create_hand()
 		self.create_targets()
 
+		return self.observe()[0]
+	
+	def observe(self): 
+
+		state = []
+		for f in self.hand.fingers: 
+
+			current_angles = f.angles.tolist()
+			for a in current_angles:
+				state.append(a)
+			
+		for t in self.targets: 
+			for tp in t: 
+				state.append(tp)
+
+		reward = 0 
+		for f,t in zip(self.hand.fingers, self.targets):
+			effector_position = f.get_joints_pos()[-1] 
+			distance = np.sqrt(np.sum(np.power(effector_position - t, 2)))
+			finger_reward = 1 - np.min([distance, 1.])
+			reward += finger_reward
+
+		reward /= float(len(self.hand.fingers))
+		done = False 
+		infos = {}
+	
+		return state, reward, done, infos
+
+
 	def step(self, action):  
 
 		self.steps += 1
 
 		self.hand.move(action)
 
-		obs = []
-		done = False
-		reward = 0
-		infos = {}
-
-		if self.steps >= self.max_steps: 
-			done = True
-
-		return obs, reward, done, infos
+		return self.observe()
 
 
 	def init_render(self): 
@@ -295,7 +314,7 @@ class World:
 			
 
 		text = "Steps: {}/{}".format(self.steps, self.max_steps)
-		position = (0,15+(i+1)*0.5,2)
+		position = (0,15+(-1)*0.5,2)
 		self.render_text(text,position)
 
 	def render_text(self, text, position): 
@@ -309,13 +328,16 @@ class World:
 	def get_fingers_target_infos(self, finger, target, num): 
 
 		text = "Random value: {}".format(np.random.uniform(0.,1.))
-		text = "ID: {} Effector pos: {} Target pos {}".format(num, finger.get_effector_pos(), target)
+		text = "ID: {} Effector pos: {} Target pos {}".format(num, finger.get_joints_pos()[-1][:-1], target[:-1])
 		return text
 
 	def move_camera(self): 
 
 		glPushMatrix()
 		translation = np.zeros((3))
+
+		event = pygame.event.get()
+
 		keys = pygame.key.get_pressed()
 
 		if keys[273] == 1: 
