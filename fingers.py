@@ -111,7 +111,9 @@ class Finger:
 	def move(self, action): 
 
 		self.angles += action*0.01
-		self.angles = np.clip(self.angles, 0., np.pi/2.)
+		self.angles[0] = np.clip(self.angles[0], -np.pi/3., np.pi/6)
+		for i in range(1, self.angles.shape[0]): 
+			self.angles[i] = np.clip(self.angles[i], -np.pi/3., self.angles[i-1])
 	
 class Target: 
 
@@ -162,7 +164,7 @@ class World:
 		self.hand = Hand(self.nb_fingers, self.nb_joints, self.joints_length, self.fingers_width, self.fingers_spacing)
 
 	def create_targets(self): 
-		self.targets = np.array([[np.random.uniform(0.3, 0.7), np.random.uniform(-0.5,0.3), f*self.fingers_spacing*self.fingers_width] for f in range(self.nb_fingers)])
+		self.targets = np.array([[np.random.uniform(0.3, 0.7), np.random.uniform(-0.5,0.1), f*self.fingers_spacing*self.fingers_width] for f in range(self.nb_fingers)])
 
 	def reset(self): 
 
@@ -195,6 +197,8 @@ class World:
 		reward /= float(len(self.hand.fingers))
 		done = False 
 		infos = {}
+		if self.steps > self.max_steps:
+			done = True
 	
 		return state, reward, done, infos
 
@@ -390,12 +394,14 @@ def main():
 		# draw(world, quadratic)
 		world.render()
 		ns, r, done, _ = world.step(incs)
-
+		
 		if done: 
 			world.reset()
 		counter += 1 
 		if counter > 80: 
 			incs = np.random.uniform(-1.,1., (3,3))
+			incs[:,1:] = 0.
+			
 			counter = 0
 
 		# draw_text(screen, font)
