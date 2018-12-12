@@ -145,20 +145,49 @@ class Hand:
 		
 class World: 
 
-	def __init__(self, nb_fingers = 3, nb_joints = 3, joints_length = 0.2, scale = 15., width = 0.05, spacing_ratio = 1.5): 
+	def __init__(self, nb_fingers = 3, nb_joints = 3, joints_length = 0.2, scale = 15., width = 0.05, spacing_ratio = 1.5, max_steps = 500): 
 		
 		
 		self.scale = scale 
 		self.nb_joints = nb_joints
 		self.nb_fingers = nb_fingers
 		self.joints_length = joints_length
-		
-		self.hand = Hand(nb_fingers, nb_joints, joints_length, width, spacing_ratio)
+		self.fingers_width = width
+		self.fingers_spacing = spacing_ratio
 
-		self.targets = np.array([[np.random.uniform(0.3, 0.7), np.random.uniform(-0.5,0.3), f*spacing_ratio*width] for f in range(nb_fingers)])
 
+		self.max_steps = max_steps
 
 		self.render_ready = False 
+
+	def create_hand(self): 
+		self.hand = Hand(self.nb_fingers, self.nb_joints, self.joints_length, self.fingers_width, self.fingers_spacing)
+
+	def create_targets(self): 
+		self.targets = np.array([[np.random.uniform(0.3, 0.7), np.random.uniform(-0.5,0.3), f*self.fingers_spacing*self.fingers_width] for f in range(self.nb_fingers)])
+
+	def reset(self): 
+
+		self.steps = 0 
+		self.create_hand()
+		self.create_targets()
+
+	def step(self, action):  
+
+		self.steps += 1
+
+		self.hand.move(action)
+
+		obs = []
+		done = False
+		reward = 0
+		infos = {}
+
+		if self.steps >= self.max_steps: 
+			done = True
+
+		return obs, reward, done, infos
+
 
 	def init_render(self): 
 
@@ -262,10 +291,20 @@ class World:
 		for i,(f,t) in enumerate(zip(self.hand.fingers, self.targets)): 
 			text = self.get_fingers_target_infos(f,t,i)
 			position = (0,15+i*0.5,2)
-			textSurface = self.font.render(text, True, (255,255,255,255), (0,0,0,255))     
-			textData = pygame.image.tostring(textSurface, "RGBA", True)     
-			glRasterPos3d(*position)     
-			glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
+			self.render_text(text,position)
+			
+
+		text = "Steps: {}/{}".format(self.steps, self.max_steps)
+		position = (0,15+(i+1)*0.5,2)
+		self.render_text(text,position)
+
+	def render_text(self, text, position): 
+
+		textSurface = self.font.render(text, True, (255,255,255,255), (0,0,0,255))     
+		textData = pygame.image.tostring(textSurface, "RGBA", True)     
+		glRasterPos3d(*position)     
+		glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
+
 
 	def get_fingers_target_infos(self, finger, target, num): 
 
@@ -307,78 +346,11 @@ class World:
 
 		glPopMatrix()
 
-# def draw(world, quadratic): 
-
-# 	hand = world.hand
-# 	scale = world.scale 
-# 	data = hand.compute_draw_infos(scale)
-# 	glColor3fv((0.3,0.75,0.5)) 
-# 	glBegin(GL_QUADS)
-# 	for finger_data in data:
-# 		cube, cube_edges, all_surfaces = finger_data
-# 		for surfaces, c in zip(all_surfaces, cube):
-# 			for surface in surfaces: 
-# 				for vertex in surface: 
-# 					# input(vertex)
-# 					glVertex3fv(c[vertex])
-# 	glEnd()
-
-# 	glColor3fv((0,0,0)) 
-# 	glBegin(GL_LINES)
-# 	for finger_data in data: 
-# 		cube, cube_edges, surfaces = finger_data
-# 		color = 0
-# 		for c, ce in zip(cube, cube_edges):
-# 			# glColor3fv(colors[color]) 
-# 			for edge in ce: 
-# 				for v in edge: 
-# 					glVertex3fv(c[v])
-		
-# 			color += 1
-
-# 	glEnd()
-
-
-# 	glColor3fv((0.8,0.6,0.3))
-# 	glPushMatrix()
-# 	# glLoadIdentity()
-# 	glTranslatef(1,1,1)
-# 	gluQuadricDrawStyle(quadratic, GLU_FILL);
-# 	gluSphere(quadratic,0.65,16,16)		
-# 	glColor3fv((1,1,1))
-# 	gluQuadricDrawStyle(quadratic, GLU_LINE);
-# 	gluSphere(quadratic,0.7,8,6)
-# 	glPopMatrix()
-
-
-
-	# input()
-
-
-
-# def draw_text(screen, font): 
-
-# 	text = "Random value: {}".format(np.random.uniform(0.,1.))
-# 	position = (0,15,2)
-# 	textSurface = font.render(text, True, (255,255,255,255), (0,0,0,255))     
-# 	textData = pygame.image.tostring(textSurface, "RGBA", True)     
-# 	glRasterPos3d(*position)     
-# 	glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
-
-
-# 	# Method called several times because \n is not supported 
-
-# 	text = "Random value: {}".format(np.random.uniform(0.,1.))
-# 	position = (0,14,2)
-# 	textSurface = font.render(text, True, (255,255,255,255), (0,0,0,255))     
-# 	textData = pygame.image.tostring(textSurface, "RGBA", True)     
-# 	glRasterPos3d(*position)     
-# 	glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
-
 
 def main():
 	
 	world = World()
+	world.reset()
 	
 	incs = [0.7, -0.8, 0.5]
 	counter = 0 
@@ -395,7 +367,10 @@ def main():
 
 		# draw(world, quadratic)
 		world.render()
-		world.hand.move(incs)
+		ns, r, done, _ = world.step(incs)
+
+		if done: 
+			world.reset()
 		counter += 1 
 		if counter > 80: 
 			incs = np.random.uniform(-1.,1., (3,3))
