@@ -3,7 +3,9 @@ from pygame.locals import *
 import numpy as np 
 from OpenGL.GL import *
 from OpenGL.GLU import *
-
+import gym 
+from gym import spaces, error, utils
+from gym.utils import seeding 
 
 np.set_printoptions(formatter={'float':'{:0.2f}'.format})
 def get_articulation(p0,p1, angle, scale, width = 1.):
@@ -144,22 +146,41 @@ class Hand:
 		for f,a in zip(self.fingers, action): 
 			f.move(a)
 		
-class World: 
+class World(gym.Env): 
+
+	metadata = {'render.modes':['human']}
 
 	def __init__(self, nb_fingers = 1, nb_joints = 3, joints_length = 0.2, scale = 15., width = 0.05, spacing_ratio = 1.5, max_steps = 500): 
 		
 		
+		super().__init__()
+
 		self.scale = scale 
 		self.nb_joints = nb_joints
 		self.nb_fingers = nb_fingers
 		self.joints_length = joints_length
 		self.fingers_width = width
 		self.fingers_spacing = spacing_ratio
+	
 
+		self.initialize_spaces()
 
 		self.max_steps = max_steps
 
 		self.render_ready = False 
+
+	def initialize_spaces(self): 
+
+		obs = np.ones((self.nb_joints + 2))
+		low_obs = -np.pi*0.5*obs 
+		high_obs = np.pi*0.5*obs
+
+		ac = np.ones((self.nb_joints))
+		low_ac = -ac
+		high_ac = ac
+
+		self.observation_space = spaces.Box(low_obs, high_obs, dtype = np.float)
+		self.action_space = spaces.Box(low_ac, high_ac, dtype = np.float)
 
 	def create_hand(self): 
 		self.hand = Hand(self.nb_fingers, self.nb_joints, self.joints_length, self.fingers_width, self.fingers_spacing)
@@ -167,7 +188,7 @@ class World:
 	def create_targets(self): 
 
 		max_length = self.joints_length*self.nb_joints
-		distances = np.random.uniform(0.2,0.8, (self.nb_fingers))*max_length 
+		distances = np.random.uniform(0.4,0.9, (self.nb_fingers))*max_length 
 		angles = np.random.uniform(-np.pi*0.5, np.pi/6, (self.nb_fingers))
 
 		self.targets = np.array([[np.cos(a)*d, np.sin(a)*d, i*self.fingers_spacing*self.fingers_width] for i, (a,d) in enumerate(zip(angles, distances))])
@@ -207,6 +228,7 @@ class World:
 		if self.steps > self.max_steps:
 			done = True
 	
+		self.info_to_text = 'Reward: {:.3f}'.format(reward)
 		return state, reward, done, infos
 
 
@@ -326,7 +348,7 @@ class World:
 			self.render_text(text,position)
 			
 
-		text = "Steps: {}/{}".format(self.steps, self.max_steps)
+		text = "Steps: {}/{} {}".format(self.steps, self.max_steps, self.info_to_text)
 		position = base_position + np.array([0,-1,2])
 		self.render_text(text,position)
 
